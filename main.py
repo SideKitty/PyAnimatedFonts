@@ -1,11 +1,12 @@
 import pygame as pg
-from pathlib import Path
+from pathlib import Path, PurePath
 from file_manager import FontDetails, Font
 
 pg.init()
 winSize = (800, 800)
 window = pg.display.set_mode(winSize)
-pg.display.set_caption("Font-Maker")
+title:str = "Untitled"
+pg.display.set_caption(f"Font-Maker {title} a[0]")
 
 clock = pg.time.Clock()
 FPS = 30 
@@ -13,6 +14,7 @@ FPS = 30
 whiteMode = True
 fontPath = "test.afont"
 fontPath = Path(__file__).parent.resolve() / fontPath
+fontPath = PurePath(fontPath)
 
 class appColors:
     def __init__(self):
@@ -48,13 +50,51 @@ class appColors:
 activeGridIndex = (0,0)
 currentFrameIndex = 0
 
+previewing:bool = False
+previewidx:int = 0
+pvPosX:int = 0
+pvPosY:int = 0
+previewFrame:int = 0
+previewLatency:bool = 10
+
 def display(font:Font, colors:appColors):
     window.fill(colors.background)
+    
+    global previewing, previewidx
+    global pvPosX, pvPosY, previewlen
+    global previewFrame, previewLatency
+
+    if previewing:
+        pvPosX, pvPosY = 0, 0
+        for row in font.details.currCharacter.pixels[previewidx]:
+            for active in row:
+                if active:
+                    pg.draw.rect(window, colors.activePixel,
+                        pg.Rect(pvPosX, pvPosY,
+                            font.pixelSize[0],
+                            font.pixelSize[1]))
+
+                pvPosX += font.pixelSize[0]
+
+            pvPosX = 0
+            pvPosY += font.pixelSize[1]
+
+        previewFrame += 1
+        if previewFrame == previewLatency:
+            previewFrame = 0
+            previewidx += 1
+            length = font.details.currCharacter.frameCount
+            if previewidx == length:
+                previewidx = 0
+                previewing = False
+        
+        pg.display.update()
+        return
 
     currX:int = 0
     currY:int = 0
 
-    for y in font.details.pixelDatas[currentFrameIndex]:
+    for y in font.details.currCharacter.pixels[currentFrameIndex]:
         for active in y:
             if active:
                 pg.draw.rect(window,
@@ -80,10 +120,11 @@ def display(font:Font, colors:appColors):
 
 holdingButton:int = 0
 holdingKey:int = 0
+gettingUnicode:bool = False
 
 def userInputs(font:Font) -> bool:
-    global holdingKey, holdingButton
-    global currentFrameIndex
+    global holdingKey, holdingButton, previewing
+    global currentFrameIndex, gettingUnicode, title
     for event in pg.event.get():
 
         if event.type == pg.QUIT:
@@ -91,39 +132,70 @@ def userInputs(font:Font) -> bool:
 
         if event.type == pg.KEYDOWN:
             holdingKey = event.key
+            
+            if previewing:
+                previewing = False
+                return True
+
+            if event.mod == pg.KMOD_RSHIFT:
+                gettingUnicode = True
+                continue
+
+            if gettingUnicode:
+                font.details.changeCharacter(event.unicode)
+                gettingUnicode = False
+                pg.display.set_caption(
+                    f"Font-Maker {title} {event.unicode}[0]")
+                continue
 
             match event.key:
                 case pg.K_ESCAPE:
                     return False
 
+                case pg.K_p:
+                    previewing = True
+
+                case pg.K_r:
+                    font.details.fillDatas(0)
+
+                case pg.K_f:
+                    font.details.fillDatas(1)
+
                 case pg.K_e:
-                    length = font.details.frameCount - 1
+                    length = font.details.currCharacter.frameCount - 1
                     if currentFrameIndex == length:
-                        if event.mod and pg.KMOD_SHIFT:
+                        if event.mod and pg.KMOD_LSHIFT:
                             font.details.growBy(1)
                         else:
                             currentFrameIndex = -1
 
                     currentFrameIndex += 1
-                    pg.display.set_caption(
-                        f"Font-Maker {currentFrameIndex}")
+                    pg.display.set_caption(f"Font-Maker {title} \
+{font.details.currCharacter.unicode}[{currentFrameIndex}]")
 
                 case pg.K_q:
-                    length = font.details.frameCount - 1
+                    length = font.details.currCharacter.frameCount - 1
                     if currentFrameIndex == 0:
                         currentFrameIndex = length
                     else:
                         currentFrameIndex -= 1
-                    pg.display.set_caption(
-                        f"Font-Maker {currentFrameIndex}")
+                    pg.display.set_caption(f"Font-Maker {title} \
+{font.details.currCharacter.unicode}[{currentFrameIndex}]")
 
                 case pg.K_s:
                     if event.mod and pg.KMOD_CTRL:
+                        prePath:str = fontPath
                         font.saveTo(fontPath)
+                        if fontPath != prePath:
+                            title = fontPath.relative_to(fontPath.parents[1])
 
                 case pg.K_o:
                     if event.mod and pg.KMOD_CTRL:
                         font.open(fontPath)
+                        font.updatePixelSize(winSize[0], winSize[1])
+                        title = fontPath.relative_to(fontPath.parents[1])
+                    pg.display.set_caption(f"Font-Maker {title} \
+{font.details.currCharacter.unicode}[{currentFrameIndex}]")
 
             return True
 
@@ -133,7 +205,13 @@ def userInputs(font:Font) -> bool:
 
         global activeGridIndex
         if event.type == pg.MOUSEBUTTONDOWN:
+
+            if previewing:
+                previewing = False
+                return True
+
             holdingButton = event.button
+            activeGridIndex = (-1,-1)
             return True
 
         if event.type == pg.MOUSEBUTTONUP:
@@ -149,7 +227,7 @@ def userInputs(font:Font) -> bool:
             activeGridIndex = gridIndex
 
         if holdingButton:
-            frame = font.details.pixelDatas[currentFrameIndex]
+            frame = font.details.currCharacter.pixels[currentFrameIndex]
             frame[activeGridIndex[1]][activeGridIndex[0]] = \
                 True if holdingButton == 1 else False
 
