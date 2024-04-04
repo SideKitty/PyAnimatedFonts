@@ -1,3 +1,10 @@
+# Usage
+copy pyfont.py file to where ever you like then import it  
+
+# Example
+is in the pyfont.py file :)
+
+# Keybindings
 Press q to go previous frame   
 Press e to go next frame
 
