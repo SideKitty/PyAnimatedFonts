@@ -115,7 +115,7 @@ class Font:
             winSizeX / self.details.width,
             winSizeY / self.details.height)
 
-    def saveTo(self, path:str, inCurrDirectory:bool=True):
+    def saveTo(self, path:str|Path, inCurrDirectory:bool=True):
         self.path = path
         if inCurrDirectory:
             self.path = Path(__file__).parent.resolve() / path
@@ -124,7 +124,8 @@ class Font:
             print("Cannot save because current path is directory")
             return
 
-        deleteFile(self.path)
+        if self.path.exists():
+            deleteFile(self.path)
 
         with open(self.path, "wb") as file:
             for unicode in self.details.unicodes:
@@ -136,7 +137,7 @@ class Font:
                         file.write(b'\2')
                     file.write(b'\3')
 
-    def open(self, path:str, inCurrDirectory:bool=True):
+    def open(self, path:str|Path, inCurrDirectory:bool=True):
         self.path = path
         if inCurrDirectory:
             self.path = Path(__file__).parent.resolve() / path
@@ -159,7 +160,7 @@ class Font:
 
             for byte in file.read():
                 if gettingUnicode:
-                    byte = chr(byte) 
+                    byte = chr(byte)
                     self.details.characters[byte] = Char(byte)
                     self.details.unicodes.append(byte)
                     gettingUnicode = False
@@ -189,8 +190,8 @@ class Font:
                         gettingUnicode = True
 
                     case _: row.append(byte)
-            
-            if self.details.currCharacter.pixels[-1] == []:
-                self.details.currCharacter.pixels.pop()
+
+            self.details.currCharacter.pixels.pop()
+            self.details.currCharacter.frameCount -= 1
 
             self.details.currCharacter = self.details.characters["a"]

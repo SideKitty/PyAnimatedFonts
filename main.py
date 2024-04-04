@@ -8,12 +8,12 @@ window = pg.display.set_mode(winSize)
 title:str = "Untitled"
 pg.display.set_caption(f"Font-Maker {title} a[0]")
 
-clock = pg.time.Clock()
+clock = pg.time.Clock() 
 FPS = 30 
 
 whiteMode = True
 fontPath = "test.afont"
-fontPath = Path(__file__).parent.resolve() / fontPath
+fontPath = Path(__file__).parent.resolve() / "Saves" / fontPath
 fontPath = PurePath(fontPath)
 
 class appColors:
@@ -120,11 +120,17 @@ def display(font:Font, colors:appColors):
 
 holdingButton:int = 0
 holdingKey:int = 0
+
 gettingUnicode:bool = False
 
+forSaving:bool = False
+forOpening:bool = False
+
 def userInputs(font:Font) -> bool:
-    global holdingKey, holdingButton, previewing
-    global currentFrameIndex, gettingUnicode, title
+    global holdingKey, holdingButton, title
+    global currentFrameIndex, previewing
+    global forSaving, forOpening, gettingUnicode
+
     for event in pg.event.get():
 
         if event.type == pg.QUIT:
@@ -142,11 +148,46 @@ def userInputs(font:Font) -> bool:
                 continue
 
             if gettingUnicode:
+                if forSaving:
+                    fontPath = Path(__file__).parent.resolve() \
+                        / "Saves" / f"{event.unicode}.afont"
+
+                    title = fontPath.relative_to(fontPath.parents[1])
+                    
+                    font.saveTo(fontPath)
+
+                    pg.display.set_caption(f"Font-Maker {title} \
+{event.unicode}[{currentFrameIndex}]")
+
+                    gettingUnicode = False
+                    forSaving = False
+                    return True
+
+                if forOpening:
+                    fontPath = Path(__file__).parent.resolve() \
+                        / "Saves" / f"{event.unicode}.afont"
+
+                    if not fontPath.exists() or fontPath.is_dir():
+                        return True
+
+                    font.open(fontPath)
+                    currentFrameIndex = 0
+
+                    title = fontPath.relative_to(fontPath.parents[1])
+                    pg.display.set_caption(
+                        f"Font-Maker {title} {event.unicode}[0]")
+                    
+                    forOpening = False
+                    gettingUnicode = False
+                    return True
+
+                currentFrameIndex = 0
+                previewidx = 0
                 font.details.changeCharacter(event.unicode)
                 gettingUnicode = False
                 pg.display.set_caption(
                     f"Font-Maker {title} {event.unicode}[0]")
-                continue
+                return True
 
             match event.key:
                 case pg.K_ESCAPE:
@@ -162,14 +203,14 @@ def userInputs(font:Font) -> bool:
                     font.details.fillDatas(1)
 
                 case pg.K_e:
-                    length = font.details.currCharacter.frameCount - 1
+                    length = font.details.currCharacter.frameCount
+                    currentFrameIndex += 1
                     if currentFrameIndex == length:
                         if event.mod and pg.KMOD_LSHIFT:
                             font.details.growBy(1)
                         else:
-                            currentFrameIndex = -1
+                            currentFrameIndex = 0 
 
-                    currentFrameIndex += 1
                     pg.display.set_caption(f"Font-Maker {title} \
 {font.details.currCharacter.unicode}[{currentFrameIndex}]")
 
@@ -184,6 +225,11 @@ def userInputs(font:Font) -> bool:
 
                 case pg.K_s:
                     if event.mod and pg.KMOD_CTRL:
+                        if pg.KMOD_SHIFT:
+                            forSaving = True
+                            gettingUnicode = True
+                            continue
+
                         prePath:str = fontPath
                         font.saveTo(fontPath)
                         if fontPath != prePath:
@@ -191,6 +237,11 @@ def userInputs(font:Font) -> bool:
 
                 case pg.K_o:
                     if event.mod and pg.KMOD_CTRL:
+                        if pg.KMOD_SHIFT:
+                            forOpening = True
+                            gettingUnicode = True
+                            return True
+
                         font.open(fontPath)
                         font.updatePixelSize(winSize[0], winSize[1])
                         title = fontPath.relative_to(fontPath.parents[1])
