@@ -11,7 +11,9 @@ pg.display.set_caption(f"Font-Maker {title} a[0]")
 clock = pg.time.Clock() 
 FPS = 30 
 
-whiteMode = True
+darkMode:bool = False
+themeChanged:bool = True
+
 fontPath = "test.afont"
 fontPath = Path(__file__).parent.resolve() / "Saves" / fontPath
 fontPath = PurePath(fontPath)
@@ -128,7 +130,7 @@ forOpening:bool = False
 
 def userInputs(font:Font) -> bool:
     global holdingKey, holdingButton, title
-    global currentFrameIndex, previewing
+    global currentFrameIndex, previewing, themeChanged
     global forSaving, forOpening, gettingUnicode
 
     for event in pg.event.get():
@@ -192,6 +194,9 @@ def userInputs(font:Font) -> bool:
             match event.key:
                 case pg.K_ESCAPE:
                     return False
+
+                case pg.K_t:
+                    themeChanged = True
 
                 case pg.K_p:
                     previewing = True
@@ -293,12 +298,15 @@ if __name__ == "__main__":
     
     colors = appColors()
     
-    if whiteMode:
-        colors.whiteMode()
-    else:
-        colors.darkMode()
-    
     while userInputs(font):
+        if themeChanged:
+            darkMode = 0 if darkMode else 1
+            if darkMode:
+                colors.whiteMode()
+            else:
+                colors.darkMode()
+            themeChanged = False
+    		
         display(font, colors)
         clock.tick(FPS)
 
