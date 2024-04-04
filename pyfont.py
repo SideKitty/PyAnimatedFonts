@@ -13,7 +13,7 @@ class Char:
         self.unicode = unicode
         self.pixels = list()
         self.pixels = [[],]
-        self.frameCount = 1
+        self.frameCount = 0
         self.currentFrame = 0
 
 class Details:
@@ -116,9 +116,7 @@ class PyFont:
                         currCharacter.pixels.append([])
                     
                     case 4:
-                        if currCharacter:
-                            currCharacter.pixels.pop()
-                            currCharacter.frameCount -= 1
+                        if currCharacter: currCharacter.pixels.pop()
                         gettingUnicode = True
 
                     case _: row.append(byte)
@@ -208,9 +206,14 @@ class PyFont:
         if layer != None:
             _layer = self.layers[layer]
             for layer in _layer:
-                if not layer[2]: continue
+                if not layer[2]: # animated
+                    for rect in layer[4]:
+                        pg.draw.rect(self.window, layer[3], rect)
+
+                    continue
+
                 for rect in layer[4][layer[0]]:
-                    pg.draw.rect(self.window, layer[3], rect)
+                    pg.draw.rect(self.window, layer[3], rect)  
 
             return
 
@@ -223,7 +226,7 @@ class PyFont:
                     continue
 
                 for rect in layer[4][layer[0]]:
-                    pg.draw.rect(self.window, layer[3], rect)                
+                    pg.draw.rect(self.window, layer[3], rect)               
 
     def animate(self, layer:int|None=None):
 
@@ -252,6 +255,7 @@ if __name__ == "__main__":
 
     font = PyFont(window, "Saves/q.afont", True)
     font.render("aa\nbb", (42,42,42), (42,42))
+    font.render("cc\ndd", (42,42,42), (200,200))
 
     running:bool = True
     while running:
