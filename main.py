@@ -1,4 +1,5 @@
 import pygame as pg
+from typing import Tuple
 from pathlib import Path, PurePath
 from file_manager import FontDetails, Font
 
@@ -10,6 +11,7 @@ pg.display.set_caption(f"Font-Maker {title} a[0]")
 
 clock = pg.time.Clock() 
 FPS = 30 
+gridSize:Tuple[int, int] = (8, 10)
 
 darkMode:bool = False
 themeChanged:bool = True
@@ -124,14 +126,15 @@ holdingButton:int = 0
 holdingKey:int = 0
 
 gettingUnicode:bool = False
+unicodeCapitalized:bool = False
 
 forSaving:bool = False
 forOpening:bool = False
 
 def userInputs(font:Font) -> bool:
-    global holdingKey, holdingButton, title
-    global currentFrameIndex, previewing, themeChanged
-    global forSaving, forOpening, gettingUnicode
+    global holdingKey, holdingButton, title, unicodeCapitalized
+    global currentFrameIndex, previewing, themeChanged 
+    global forSaving, forOpening, gettingUnicode, gridSize
 
     for event in pg.event.get():
 
@@ -145,7 +148,8 @@ def userInputs(font:Font) -> bool:
                 previewing = False
                 return True
 
-            if event.mod == pg.KMOD_RSHIFT:
+            if event.mod & pg.KMOD_RSHIFT:
+                if event.mod & pg.KMOD_RCTRL: unicodeCapitalized = True
                 gettingUnicode = True
                 continue
 
@@ -174,6 +178,9 @@ def userInputs(font:Font) -> bool:
 
                     font.open(fontPath)
                     currentFrameIndex = 0
+                    font.updatePixelSize(*winSize)
+                    
+                    gridSize = (font.details.width, font.details.height)
 
                     title = fontPath.relative_to(fontPath.parents[1])
                     pg.display.set_caption(
@@ -183,13 +190,46 @@ def userInputs(font:Font) -> bool:
                     gettingUnicode = False
                     return True
 
+                unicode = event.unicode
+                if unicodeCapitalized:
+                    unicode = unicode.upper()
+                    unicodeCapitalized = False
+
                 currentFrameIndex = 0
                 previewidx = 0
-                font.details.changeCharacter(event.unicode)
                 gettingUnicode = False
+
+                font.details.changeCharacter(unicode)
                 pg.display.set_caption(
-                    f"Font-Maker {title} {event.unicode}[0]")
+                    f"Font-Maker {title} {unicode}[0]")
+
                 return True
+
+            if event.unicode == '+':
+                if event.mod & pg.KMOD_LCTRL:
+                    gridSize = (gridSize[0] + 1, gridSize[1])
+                    font.details.setResolution(*gridSize, False)
+                    font.updatePixelSize(*winSize)
+                    return True
+                if event.mod & pg.KMOD_RCTRL:
+                    gridSize = (gridSize[0], gridSize[1] + 1)
+                    font.details.setResolution(*gridSize, False)
+                    font.updatePixelSize(*winSize)
+                    return True
+
+            if event.unicode == '-':
+                if event.mod & pg.KMOD_LCTRL:
+                    if gridSize[0] == 0: return True
+                    gridSize = (gridSize[0] - 1, gridSize[1])
+                    font.details.setResolution(*gridSize, False)
+                    font.updatePixelSize(*winSize)
+                    return True
+                if event.mod & pg.KMOD_RCTRL:
+                    if gridSize[1] == 0: return True
+                    gridSize = (gridSize[0], gridSize[1] - 1)
+                    font.details.setResolution(*gridSize, False)
+                    font.updatePixelSize(*winSize)
+                    return True
 
             match event.key:
                 case pg.K_ESCAPE:
@@ -211,7 +251,7 @@ def userInputs(font:Font) -> bool:
                     length = font.details.currCharacter.frameCount
                     currentFrameIndex += 1
                     if currentFrameIndex == length:
-                        if event.mod and pg.KMOD_LSHIFT:
+                        if event.mod & pg.KMOD_LSHIFT:
                             font.details.growBy(1)
                         else:
                             currentFrameIndex = 0 
@@ -229,8 +269,8 @@ def userInputs(font:Font) -> bool:
 {font.details.currCharacter.unicode}[{currentFrameIndex}]")
 
                 case pg.K_s:
-                    if event.mod and pg.KMOD_CTRL:
-                        if pg.KMOD_SHIFT:
+                    if event.mod & pg.KMOD_LCTRL:
+                        if event.mod & pg.KMOD_LSHIFT:
                             forSaving = True
                             gettingUnicode = True
                             continue
@@ -241,14 +281,14 @@ def userInputs(font:Font) -> bool:
                             title = fontPath.relative_to(fontPath.parents[1])
 
                 case pg.K_o:
-                    if event.mod and pg.KMOD_CTRL:
-                        if pg.KMOD_SHIFT:
+                    if event.mod & pg.KMOD_LCTRL:
+                        if event.mod & pg.KMOD_LSHIFT:
                             forOpening = True
                             gettingUnicode = True
                             return True
 
                         font.open(fontPath)
-                        font.updatePixelSize(winSize[0], winSize[1])
+                        font.updatePixelSize(*winSize)
                         title = fontPath.relative_to(fontPath.parents[1])
                     pg.display.set_caption(f"Font-Maker {title} \
 {font.details.currCharacter.unicode}[{currentFrameIndex}]")
@@ -291,10 +331,10 @@ def userInputs(font:Font) -> bool:
 
 if __name__ == "__main__":
     details = FontDetails()
-    details.setResolution(8,10,True)
+    details.setResolution(*gridSize,True)
 
     font = Font(details)
-    font.updatePixelSize(winSize[0], winSize[1])
+    font.updatePixelSize(*winSize)
     
     colors = appColors()
     
