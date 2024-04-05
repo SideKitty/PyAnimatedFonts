@@ -63,7 +63,7 @@ class FontDetails:
         
         newXDifference:int = abs(w - self.width)
         newYDifference:int = abs(h - self.height)
-
+    
         if w < 1 or h < 1: w, h = 1, 1
         self.width, self.height = w, h
 
@@ -72,26 +72,30 @@ class FontDetails:
             return
 
         if isYGrowing:
-            for frame in self.currCharacter.pixels:
-                for _ in range(newYDifference):
-                    frame.append([
-                        [0 for _ in range(w)]
-                        for _ in range(h)])
+            for unicode in self.unicodes:
+                for frame in self.characters[unicode].pixels:
+                    for _ in range(newYDifference):
+                        frame.append([0 for _ in range(w)])
         else:
-            for frame in self.currCharacter.pixels:
-                for _ in range(newYDifference):
-                    frame.pop()
+            if len(self.currCharacter.pixels[0]) > newYDifference:
+                for unicode in self.unicodes:
+                    for frame in self.characters[unicode].pixels:
+                        for _ in range(newYDifference):
+                            frame.pop()
                     
         if isXGrowing:
-            for frame in self.currCharacter.pixels:
-                for row in frame:
-                    for _ in range(newXDifference):
-                        row.append(0)
+            for unicode in self.unicodes:
+                for frame in self.characters[unicode].pixels:
+                    for row in frame:
+                        for _ in range(newXDifference):
+                            row.append(0)
         else:
-            for frame in self.currCharacter.pixels:
-                for row in frame:
-                    for _ in range(newXDifference):
-                        row.pop()
+            if len(self.currCharacter.pixels[0][0]) > newXDifference:
+                for unicode in self.unicodes:
+                    for frame in self.characters[unicode].pixels:
+                        for row in frame:
+                            for _ in range(newXDifference):
+                                row.pop()
 
 class Font:
     def __init__(self, details:FontDetails):
@@ -148,9 +152,11 @@ class Font:
 
             row = []
 
+            width:int = 0
+            height:int = 0
+
             gettingWidth:bool = True
             gettingHeight:bool = True
-            height:int = 0
             gettingUnicode:bool = False
 
             self.details.unicodes = []
@@ -170,16 +176,14 @@ class Font:
                 match byte:
                     case 2:
                         if gettingWidth:
-                            self.details.width = len(row) 
+                            width = len(row) 
                             gettingWidth = False
                         if gettingHeight: height += 1
                         self.details.currCharacter.pixels[-1].append(row)
                         row = []
 
                     case 3:
-                        if gettingHeight:
-                            self.details.height = height
-                            gettingHeight = False
+                        if gettingHeight: gettingHeight = False
                         self.details.currCharacter.frameCount += 1
                         self.details.currCharacter.pixels.append([])
                     
@@ -195,3 +199,5 @@ class Font:
             self.details.currCharacter.frameCount -= 1
 
             self.details.currCharacter = self.details.characters["a"]
+
+            self.details.setResolution(width, height, False)
