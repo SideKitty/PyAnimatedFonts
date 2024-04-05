@@ -1,3 +1,6 @@
+# Not Perfect :(
+might contain bugs and also perform bad
+
 # Usage
 copy pyfont.py file to where ever you like then import it  
 
