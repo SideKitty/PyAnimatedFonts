@@ -24,6 +24,8 @@ class Details:
         self.characters:dict = {}
         self.unicodes:tuple = ()
 
+        self.indexes:dict = {}
+
 class PyFont:
     def __init__(self, window:pg.Surface, path:str, inCurrDirectory:bool=False):
         self.window = window
@@ -33,7 +35,6 @@ class PyFont:
 
         self.details = Details(0,0)
 
-        self.fontDatas:List[list] = []
         self.fontPath:str = path
         self.updateFont(path, inCurrDirectory)
         
@@ -65,9 +66,9 @@ class PyFont:
 
         height:int = 0
 
-        self.details.characters = dict()
-        self.details.characters = {}
+        self.details.characters.clear()
         self.details.unicodes = ()
+        self.details.indexes.clear()
 
         gettingWidth:bool = True
         gettingHeight:bool = True
@@ -126,9 +127,9 @@ class PyFont:
 
             self.details.unicodes = tuple(unicodes)
             
-    def render(self, text:str, color:Tuple[int,int,int], \
+    def render(self, name:str, text:str, color:Tuple[int,int,int], \
             pos:Tuple[int,int], space:Tuple[int,int]=(7,7), \
-            scale:Tuple[int,int]=(7,7), animated:bool=True) -> list|None:
+            scale:Tuple[int,int]=(7,7), animated:bool=True):
         
         currX:int = pos[0]
         currY:int = pos[1]
@@ -148,18 +149,29 @@ class PyFont:
                 datas = self.details.characters[unicode]
             else:
                 if unicode == '\n':
-                    startY += (scale[1] * height) + space[1]
+                    startY += scale[1] + ((scale[1] * height) / 2) + space[1]
                     startX, currY = realX, startY
                     continue
                 if unicode == ' ':
-                    currX += scale[0] + space[0]
+                    currX += space[0]
                     continue
 
-                datas = [ # cube if unicode is not available yet
-                    [1 for _ in range(width)]
-                    for _ in range(height)]
+                datas = []
 
-            if animated:
+            if datas == []:
+                frame:List[pg.Rect] = []
+                for h in range(height):
+                    for w in range(width):
+                        frame.append(pg.Rect(currX, currY, *scale))
+
+                        currX += scale[0]
+
+                    currX = startX
+                    currY += scale[1]
+
+                layer.append([0, 0, False, color, tuple(frame)])
+
+            elif animated:
                 frames:List[Tuple[pg.Rect]] = []
                 currFrame:List[pg.Rect] = []
 
@@ -196,10 +208,11 @@ class PyFont:
                 
                 layer.append([0, datas.frameCount, False, color, tuple(frame)])
 
-            startX += (scale[0] * width) + space[0]
+            startX += scale[0] + ((scale[0] * width) / 2) + space[0]
             currX, currY = startX, startY
 
         self.layers.append(layer)
+        self.details.indexes[name] = len(self.layers) - 1
 
     def display(self, layer:int|None=None):
 
@@ -248,14 +261,104 @@ class PyFont:
                 if layer[0] == layer[1]:
                     layer[0] = 0
 
+    def remove(self, name:str|None=None, endidx:int|str=-1):
+        if name is self.ALL:
+            self.layers = []
+            return
+
+        layeridx = self.details.indexes.get(name)
+
+        if layeridx is None:
+            print(f"No layer named '{name}' so not removed!")
+            return
+
+        length:int = len(self.layers)
+
+        if length < layeridx:
+            print(f"{layeridx} amount of layers not exists so not removed!")
+            return
+
+        if type(endidx) == str:
+            endidx = self.details.indexes.get(endidx)
+            
+            if endidx is None:
+                print(f"No layer named '{name}' so not removed!")
+                return
+
+        if endidx != -1:
+            if length < endidx:
+                print(f"{endidx} amount of layers not exists so not removed!")
+                return
+
+            if endidx < layeridx:
+                print(f"PyFont.remove: layeridx should be smaller than endidx")
+                return
+
+            layeridx -= 1
+            endidx += 1
+
+            index:int = 0
+            offset:int = 0
+
+            toBeRemoved:List[str] = []
+
+            for key in self.details.indexes.keys():
+                if index == endidx: break
+                if index < layeridx:
+                    index += 1
+                    continue
+
+                toBeRemoved.append(key)
+                self.layers.pop(index - offset)
+
+                offset += 1
+                index += 1
+
+            for key in toBeRemoved:
+                self.details.indexes.pop(key, None)
+
+            index = 0
+
+            for key, value in self.details.indexes.items():
+                if index == length: break
+                if index < layeridx:
+                    index += 1
+                    continue
+                
+                self.details.indexes[key] = 0 if value == 0 else value - 1
+
+                index += 1
+            
+            return
+        
+        self.layers.pop(layeridx)
+        index:int = 0
+        layeridx -= 1
+
+        self.details.indexes.pop(name, None)
+
+        for key, value in self.details.indexes.items():
+            if index == length: break
+            if index < layeridx:
+                index += 1
+                continue
+
+            self.details.indexes[key] = 0 if value == 0 else value - 1
+
+            index += 1
+        
 if __name__ == "__main__":
     pg.init()
     window = pg.display.set_mode((727,727))
     pg.display.set_caption("Test 123")
 
-    font = PyFont(window, "Saves/q.afont", True)
-    font.render("aa\nbb", (42,42,42), (42,42))
-    font.render("cc\ndd", (42,42,42), (200,200))
+    font = PyFont(window, "Saves/a.afont", True)
+
+    font.render("first", "aa\nAA", (42,42,42), (42,42))
+    font.render("second", "AA\naa", (42,42,42), (200,200))
+
+    font.render("third", "aa\nAA", (42,42,42), (42,242))
+    font.render("fourth", "AA\naa", (42,42,42), (200,400))
 
     running:bool = True
     while running:
@@ -263,7 +366,8 @@ if __name__ == "__main__":
             if event.type == pg.QUIT: running = False
             if event.type == pg.KEYDOWN:
                 if event.key == pg.K_ESCAPE: running = False
-                if event.key == pg.K_RETURN: font.animate(font.ALL)
+                if event.key == pg.K_RETURN: font.animate(0)
+                if event.key == pg.K_r: font.remove("first", "fourth")
                 
         window.fill((200,200,200))
         font.display(font.ALL)
