@@ -133,7 +133,7 @@ forOpening:bool = False
 
 def userInputs(font:Font) -> bool:
     global holdingKey, holdingButton, title, unicodeCapitalized
-    global currentFrameIndex, previewing, themeChanged 
+    global currentFrameIndex, previewing, themeChanged, fontPath 
     global forSaving, forOpening, gettingUnicode, gridSize
 
     for event in pg.event.get():
@@ -155,6 +155,8 @@ def userInputs(font:Font) -> bool:
 
             if gettingUnicode:
                 if forSaving:
+                    forSaving = False
+
                     fontPath = Path(__file__).parent.resolve() \
                         / "Saves" / f"{event.unicode}.afont"
 
@@ -166,14 +168,16 @@ def userInputs(font:Font) -> bool:
 {event.unicode}[{currentFrameIndex}]")
 
                     gettingUnicode = False
-                    forSaving = False
                     return True
 
                 if forOpening:
+                    forOpening = False
+
                     fontPath = Path(__file__).parent.resolve() \
                         / "Saves" / f"{event.unicode}.afont"
 
                     if not fontPath.exists() or fontPath.is_dir():
+                        print(f"couldn't open '{fontPath}'")
                         return True
 
                     font.open(fontPath)
@@ -186,7 +190,6 @@ def userInputs(font:Font) -> bool:
                     pg.display.set_caption(
                         f"Font-Maker {title} {event.unicode}[0]")
                     
-                    forOpening = False
                     gettingUnicode = False
                     return True
 

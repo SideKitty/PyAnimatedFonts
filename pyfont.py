@@ -32,22 +32,25 @@ class PyFont:
         
         self.layers:List[
             List[int, int, bool, Tuple[int,int,int], tuple]] = []
+        # format:frameidx,frameCount,animated,color,frames
 
         self.details = Details(0,0)
 
         self.fontPath:str = path
-        self.updateFont(path, inCurrDirectory)
+        self.updatePath(path, inCurrDirectory)
         
         self.ALL:None = None
 
-        self.initFont(None)
+        self.init(None)
 
-    def updateFont(self, path:str, inCurrDirectory:bool=False):
+        self.animateList:dict = {} # name, idx = loop(0...end=update)  
+
+    def updatePath(self, path:str, inCurrDirectory:bool=False):
         self.fontPath = path
         if inCurrDirectory:
             self.fontPath = Path(__file__).parent.resolve() / path
 
-    def initFont(self, path:str|None=None):
+    def init(self, path:str|None=None):
         if path is None: path = self.fontPath
         path = Path(path)
         
@@ -316,6 +319,7 @@ class PyFont:
 
             for key in toBeRemoved:
                 self.details.indexes.pop(key, None)
+                self.animateList.pop(key, None)
 
             index = 0
 
@@ -336,6 +340,7 @@ class PyFont:
         layeridx -= 1
 
         self.details.indexes.pop(name, None)
+        self.animateList.pop(name, None)
 
         for key, value in self.details.indexes.items():
             if index == length: break
@@ -346,6 +351,30 @@ class PyFont:
             self.details.indexes[key] = 0 if value == 0 else value - 1
 
             index += 1
+
+    def animateEach(self, name:str|List[str]|None=None, frameCount:int=100):
+        if name is None:
+            for key in self.details.indexes:
+                self.animateList[key] = [0, frameCount]
+            return
+        if type(name) == str:
+            self.animateList[name] = [0, frameCount]
+            return
+        for key in name:
+            self.animateList[key] = [0, frameCount]
+
+    def update(self):
+        value:List[int, int]
+        index:int = 0
+        for key in self.animateList:
+            value = self.animateList[key]
+            if value[0] == value[1]:
+                index = self.details.indexes.get(key)
+                if index is None: continue
+                self.animate(index)
+                value[0] = 0
+            
+            else: value[0] += 1
         
 if __name__ == "__main__":
     pg.init()
@@ -360,6 +389,8 @@ if __name__ == "__main__":
     font.render("third", "aa\nAA", (42,42,42), (42,242))
     font.render("fourth", "AA\naa", (42,42,42), (200,400))
 
+    font.animateEach(("first", "third"), 200)
+
     running:bool = True
     while running:
         for event in pg.event.get():
@@ -371,4 +402,5 @@ if __name__ == "__main__":
                 
         window.fill((200,200,200))
         font.display(font.ALL)
+        font.update()
         pg.display.update()
