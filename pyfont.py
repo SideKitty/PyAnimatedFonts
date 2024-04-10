@@ -283,6 +283,9 @@ class PyFont:
     def remove(self, name:str|None=None, endidx:int|str=-1):
         if name is self.ALL:
             self.layers = []
+            keys = tuple(self.animateList.keys())
+            for key in keys:
+                self.animateList.pop(key, None)
             return
 
         layeridx = self.details.indexes.get(name)
