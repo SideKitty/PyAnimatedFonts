@@ -352,29 +352,41 @@ class PyFont:
 
             index += 1
 
-    def animateEach(self, name:str|List[str]|None=None, frameCount:int=100):
+    def animateEach(self, name:str|List[str]|None=None,
+            frameCount:int=100, repeated:bool=False):
+
         if name is None:
             for key in self.details.indexes:
-                self.animateList[key] = [0, frameCount]
+                self.animateList[key] = [0, frameCount, repeated]
             return
         if type(name) == str:
-            self.animateList[name] = [0, frameCount]
+            self.animateList[name] = [0, frameCount, repeated]
             return
         for key in name:
-            self.animateList[key] = [0, frameCount]
+            self.animateList[key] = [0, frameCount, repeated]
 
     def update(self):
         value:List[int, int]
         index:int = 0
+        toBeRemoved:List[str] = []
+
         for key in self.animateList:
             value = self.animateList[key]
+
             if value[0] == value[1]:
                 index = self.details.indexes.get(key)
+                
                 if index is None: continue
                 self.animate(index)
-                value[0] = 0
+
+                if value[2]: value[0] = 0
+                else: toBeRemoved.append(key)
             
             else: value[0] += 1
+
+        if toBeRemoved:
+            for key in toBeRemoved:
+                self.animateList.pop(key, None)
         
 if __name__ == "__main__":
     pg.init()
@@ -389,7 +401,7 @@ if __name__ == "__main__":
     font.render("third", "aa\nAA", (42,42,42), (42,242))
     font.render("fourth", "AA\naa", (42,42,42), (200,400))
 
-    font.animateEach(("first", "third"), 200)
+    font.animateEach(("first", "third"), 1000, True)
 
     running:bool = True
     while running:
