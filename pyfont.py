@@ -244,7 +244,9 @@ class PyFont:
                 for rect in layer[4][layer[0]]:
                     pg.draw.rect(self.window, layer[3], rect)               
 
-    def animate(self, layer:int|None=None):
+    def animate(self, layer:int|None=None, repeated:bool=True) -> bool:
+
+        finished:bool = True
 
         if layer != None:
             _layer = self.layers[layer]
@@ -253,16 +255,30 @@ class PyFont:
                 if not layer[2]: continue
                 layer[0] += 1
                 if layer[0] == layer[1]:
-                    layer[0] = 0
+                    if repeated: layer[0] = 0
+                    else: layer[0] -= 1
+                else:
+                    finished = False
+            else:
+                finished = False
 
-            return
+            return finished
         
         for _layer in self.layers:
             for layer in _layer: 
                 if not layer[2]: continue
                 layer[0] += 1
                 if layer[0] == layer[1]:
-                    layer[0] = 0
+                    if repeated: layer[0] = 0
+                    else: layer[0] -= 1
+                else:
+                    finished = False
+            else:
+                finished = False
+        else:
+            finished = False
+
+        return finished
 
     def remove(self, name:str|None=None, endidx:int|str=-1):
         if name is self.ALL:
@@ -377,10 +393,11 @@ class PyFont:
                 index = self.details.indexes.get(key)
                 
                 if index is None: continue
-                self.animate(index)
+                if self.animate(index, value[2]):
+                    if not value[2]:
+                        toBeRemoved.append(key)
 
-                if value[2]: value[0] = 0
-                else: toBeRemoved.append(key)
+                value[0] = 0
             
             else: value[0] += 1
 
@@ -402,6 +419,7 @@ if __name__ == "__main__":
     font.render("fourth", "AA\naa", (42,42,42), (200,400))
 
     font.animateEach(("first", "third"), 1000, True)
+    font.animateEach(("second", "fourth"), 1000, False)
 
     running:bool = True
     while running:
